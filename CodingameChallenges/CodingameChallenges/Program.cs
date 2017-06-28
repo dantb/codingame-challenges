@@ -90,6 +90,8 @@ class Player
         List<Action> pushActions = actions.Where(a => a.Type == PushAndBuild).ToList();
         int maxMoveHeight = -1;
         int maxBuildHeight = -1;
+        bool ignoredBuildToFour = false;
+        Action ignoredAction = null;
 
         foreach (Action action in moveActions)
         {
@@ -105,6 +107,8 @@ class Player
                 //we're done, move to that square
                 if (theUnit.Height == 3 && heightOfBuildSquareAfterBuild == 4)
                 {
+                    ignoredBuildToFour = true;
+                    ignoredAction = action;
                     //don't build on our own threes
                     continue;
                 }
@@ -204,6 +208,47 @@ class Player
                             break;
                         }
                     }
+                }
+                else if (heightOfMoveSquare == 3)
+                {
+                    //so I'm on a high square, but I want to see if I can knock them down to 0
+                    //there are often groups of 3 squares which we can remove them from so they can't get back on
+                    if (enemyUnit.Height == 3 && TheGrid.GetHeightAt(enemyFinalLocation) < 2)
+                    {
+                        //knock them off
+                        if (TheGrid.GetHeightAt(enemyFinalLocation) == 0)
+                        {
+                            //knock them straight to ground
+                            bestAction = action;
+                            break;
+                        }
+                        else
+                        {
+                            Action betterAction = GetBetterPushActionIfPossible(actions, enemyFinalLocation);
+                            bestAction = betterAction ?? action;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (ignoredBuildToFour)
+        {
+            DebugWriteLine("Inside ignored build to four");
+            if (bestAction.Type == MoveAndBuild)
+            {
+                Unit theUnit = MyUnits[bestAction.Index];
+                Coordinates unitCo = new Coordinates(theUnit.X, theUnit.Y);
+                Coordinates moveCo = unitCo.GetCoordinateInDirection(bestAction.MoveDirection);
+                int heightOfMoveSquare = TheGrid.GetHeightAt(moveCo.X, moveCo.Y);
+                Coordinates buildCo = moveCo.GetCoordinateInDirection(bestAction.BuildDirection);
+                int heightOfBuildSquareAfterBuild = TheGrid.GetHeightAt(buildCo.X, buildCo.Y) + 1;
+                if (heightOfMoveSquare < 2 && heightOfBuildSquareAfterBuild < 2)
+                {
+                    //note we know height will be four so don't worry about giving enemy a point case
+                    //moving down and not building particularly tall, worth taking ignored action
+                    bestAction = ignoredAction;
                 }
             }
         }
