@@ -11,8 +11,11 @@ using System.Collections.Generic;
  **/
 class Player
 {
+    private const string MoveAndBuild = "MOVE&BUILD";
+    private const string PushAndBuild = "PUSH&BUILD";
     private static Grid TheGrid;
     private static List<Unit> MyUnits;
+    private static List<Unit> EnemyUnits;
     private static Dictionary<string, Direction> Directions = new Dictionary<string, Direction>()
     {
         { "N", Direction.North },
@@ -52,11 +55,16 @@ class Player
                 Console.Error.WriteLine($"coords are ({unitX}, {unitY})\n");
             }
 
+            EnemyUnits = new List<Unit>();
             for (int i = 0; i < unitsPerPlayer; i++)
             {
                 inputs = Console.ReadLine().Split(' ');
                 int otherX = int.Parse(inputs[0]);
                 int otherY = int.Parse(inputs[1]);
+                if (otherX != -1)
+                {
+                    EnemyUnits.Add(new Unit(TheGrid, otherX, otherY));
+                }
                 Console.Error.WriteLine($"coords are ({otherX}, {otherY})\n");
             }
 
@@ -88,46 +96,107 @@ class Player
 
         foreach (Action action in actions)
         {
-            //the unit that can perform this action
             Unit theUnit = MyUnits[action.Index];
             Coordinates unitCo = new Coordinates(theUnit.X, theUnit.Y);
             Coordinates moveCo = unitCo.GetCoordinateInDirection(action.MoveDirection);
             int heightOfMoveSquare = TheGrid.GetHeightAt(moveCo.X, moveCo.Y);
             Coordinates buildCo = moveCo.GetCoordinateInDirection(action.BuildDirection);
             int heightOfBuildSquareAfterBuild = TheGrid.GetHeightAt(buildCo.X, buildCo.Y) + 1;
-            if (heightOfMoveSquare == 3)
+            if (action.Type == MoveAndBuild)
             {
-                //we're done, move to that square
-                if (theUnit.Height == 3 && heightOfBuildSquareAfterBuild == 4)
+                //the unit that can perform this action
+                if (heightOfMoveSquare == 3)
                 {
-                    //don't build on our own threes
-                    continue;
-                }
-                bestAction = action;
-                break;
-            }
-            else
-            {
-                if (maxMoveHeight < heightOfMoveSquare)
-                {
-                    maxMoveHeight = heightOfMoveSquare;
-                    maxBuildHeight = heightOfBuildSquareAfterBuild;
+                    //we're done, move to that square
+                    if (theUnit.Height == 3 && heightOfBuildSquareAfterBuild == 4)
+                    {
+                        //don't build on our own threes
+                        continue;
+                    }
+                    if (heightOfBuildSquareAfterBuild == 3
+                        && EnemyCanReachCoordinatesAtHeight(buildCo, heightOfBuildSquareAfterBuild))
+                    {
+                        //don't give enemy a point
+                        continue;
+                    }
                     bestAction = action;
+                    break;
                 }
-                else if (maxMoveHeight == heightOfMoveSquare)
+                else
                 {
-                    //same move height, check build height
-                    if (maxBuildHeight < heightOfBuildSquareAfterBuild)
+                    if (heightOfBuildSquareAfterBuild > heightOfMoveSquare + 1)
+                    {
+                        //why build something that we can't move to?
+                        continue;
+                    }
+
+                    if (heightOfBuildSquareAfterBuild == 3 
+                        && EnemyCanReachCoordinatesAtHeight(buildCo, heightOfBuildSquareAfterBuild))
+                    {
+                        //don't give enemy a point
+                        continue;
+                    }
+
+                    if (maxMoveHeight < heightOfMoveSquare)
                     {
                         maxMoveHeight = heightOfMoveSquare;
                         maxBuildHeight = heightOfBuildSquareAfterBuild;
                         bestAction = action;
+                    }
+                    else if (maxMoveHeight == heightOfMoveSquare)
+                    {
+                        //same move height, check build height
+                        if (maxBuildHeight < heightOfBuildSquareAfterBuild)
+                        {
+                            maxMoveHeight = heightOfMoveSquare;
+                            maxBuildHeight = heightOfBuildSquareAfterBuild;
+                            bestAction = action;
+                        }
+                    }
+                }
+            }
+            else if (action.Type == PushAndBuild)
+            {
+                Coordinates enemyCoords = unitCo.GetCoordinateInDirection(action.MoveDirection);
+                Unit enemyUnit = EnemyUnits.First(e => e.Coords.Equals(enemyCoords));
+                Coordinates enemyFinalLocation = enemyCoords.GetCoordinateInDirection(action.BuildDirection);
+                if (theUnit.Height == 0 || theUnit.Height == 1)
+                {
+                    //we're low down
+                    if (enemyUnit.Height >= 2 && TheGrid.GetHeightAt(enemyFinalLocation) < 2)
+                    {
+                        //knock them off
+                        //make sure none lower
+                        //foreach (var item in actions.Where(a => a.Type == PushAndBuild))
+                        //{
+
+                        //}
+
+
+                        bestAction = action;
+                        break;
                     }
                 }
             }
         }
 
         return bestAction;
+    }
+
+    private static bool EnemyCanReachCoordinatesAtHeight(Coordinates buildCo, int heightOfBuildSquareAfterBuild)
+    {
+        foreach (Unit enemy in EnemyUnits)
+        {
+            if (buildCo.IsAdjacentTo(enemy.Coords))
+            {
+                if (heightOfBuildSquareAfterBuild <= enemy.Height + 1)
+                {
+                    //they can get there
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     public static void DebugWriteLine(string message = "")
@@ -193,12 +262,18 @@ class Player
         {
             return _grid[y, x];
         }
+
+        public int GetHeightAt(Coordinates coords)
+        {
+            return _grid[coords.Y, coords.X];
+        }
     }
 
     public class Unit
     {
         private Grid _grid;
 
+        public Coordinates Coords;
         public int X;
         public int Y;
         public int Height { get { return _grid.GetHeightAt(X, Y); } }
@@ -207,6 +282,7 @@ class Player
         {
             X = x;
             Y = y;
+            Coords = new Coordinates(x, y);
             _grid = grid;
         }
     }
@@ -247,6 +323,16 @@ class Player
             Y = y;
         }
 
+        public override bool Equals(object obj)
+        {
+            if (obj is Coordinates)
+            {
+                Coordinates co = obj as Coordinates;
+                return co.X == X && co.Y == Y;
+            }
+            return base.Equals(obj);
+        }
+
         public Coordinates GetCoordinateInDirection(Direction dir)
         {
             switch (dir)
@@ -270,6 +356,15 @@ class Player
                 default:
                     throw new Exception($"Invalid direction {dir}");
             }
+        }
+
+        internal bool IsAdjacentTo(Coordinates coords)
+        {
+            if (Math.Abs(X - coords.X) <= 1 && Math.Abs(Y - coords.Y) <= 1)
+            {
+                return true;
+            }
+            return false;
         }
     }
 }
