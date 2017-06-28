@@ -105,18 +105,16 @@ class Player
                 bool moveSquareIsMoveUp = heightOfMoveSquare == theUnit.Height + 1;
                 int heightOfBuildSquareAfterBuild = TheGrid.GetHeightAt(buildCo.X, buildCo.Y) + 1;
 
-                if (moveSquareIsMoveUp)
+                if (maxMoveHeight < heightOfMoveSquare)
                 {
-                    if (maxMoveHeight < heightOfMoveSquare)
-                    {
-                        maxMoveHeight = heightOfMoveSquare;
-                        maxBuildHeight = heightOfBuildSquareAfterBuild;
-                        bestAction = action;
-                    }
+                    maxMoveHeight = heightOfMoveSquare;
+                    maxBuildHeight = heightOfBuildSquareAfterBuild;
+                    bestAction = action;
                 }
-                else
+                else if (maxMoveHeight == heightOfMoveSquare)
                 {
-                    if (maxMoveHeight < heightOfMoveSquare)
+                    //same move height, check build height
+                    if (maxBuildHeight < heightOfBuildSquareAfterBuild)
                     {
                         maxMoveHeight = heightOfMoveSquare;
                         maxBuildHeight = heightOfBuildSquareAfterBuild;
