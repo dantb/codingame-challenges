@@ -11,6 +11,8 @@ using System.Collections.Generic;
  **/
 class Player
 {
+    private static Grid TheGrid;
+
     static void Main(string[] args)
     {
         string[] inputs;
@@ -20,16 +22,23 @@ class Player
         // game loop
         while (true)
         {
+            List<string> rows = new List<string>();
             for (int i = 0; i < size; i++)
             {
                 string row = Console.ReadLine();
+                rows.Add(row);
                 Console.Error.WriteLine($"row is {row}\n");
             }
+
+            TheGrid = new Grid(rows);
+
             for (int i = 0; i < unitsPerPlayer; i++)
             {
                 inputs = Console.ReadLine().Split(' ');
                 int unitX = int.Parse(inputs[0]);
                 int unitY = int.Parse(inputs[1]);
+                Console.Error.WriteLine($"coords are ({unitX}, {unitY})\n");
+
             }
             for (int i = 0; i < unitsPerPlayer; i++)
             {
@@ -54,21 +63,30 @@ class Player
         }
     }
 
+    public static void DebugWrite(string message)
+    {
+        Console.Error.WriteLine(message);
+    }
+
     public class Grid
     {
         private const char Hole = '.';
         private const int HoleInt = -1;
 
-        private int[,] _grid; 
+        private int[,] _grid;
+        private int _size;
 
         /// <summary>
         /// Note grid input is given from top row to bottom row so 0th row is top
         /// </summary>
         /// <param name="rows"></param>
-        public Grid(string[] rows)
+        public Grid(List<string> rows)
         {
-            _grid = new int[rows.Length, rows.Length];
-            for (int i = 0; i < rows.Length; i++)
+            _grid = new int[rows.Count, rows.Count];
+            _size = rows.Count;
+            //reverse to start at (0,0) as a coordinate
+            rows.Reverse();
+            for (int i = 0; i < rows.Count; i++)
             {
                 string row = rows[i];
                 for (int j = 0; j < row.Length; j++)
@@ -84,6 +102,27 @@ class Player
                     }
                 }
             }
+
+            DebugWrite("The grid is: \n");
+            for (int i = _size - 1; i <= 0; i--)
+            {
+                for (int j = 0; j < _size; j++)
+                {
+                    DebugWrite($" {_grid[i, j]}");
+                }
+                DebugWrite("\n");
+            }
+        }
+    }
+
+    public class Unit
+    {
+        public int X;
+        public int Y;
+        public Unit(Grid grid, int x, int y)
+        {
+            X = x;
+            Y = y;
         }
     }
 }
