@@ -74,11 +74,59 @@ class Player
                 DebugWriteLine($"Action is:  {action}");
             }
 
-            // Write an action using Console.WriteLine()
-            // To debug: Console.Error.WriteLine("Debug messages...");
+            Action actionToTake = DecideActionToTake(actions); 
 
-            Console.WriteLine("MOVE&BUILD 0 N S");
+            Console.WriteLine(actionToTake);
         }
+    }
+
+    private static Action DecideActionToTake(List<Action> actions)
+    {
+        Action bestAction = null;
+        int maxMoveHeight = -1;
+        int maxBuildHeight = -1;
+
+        foreach (Action action in actions)
+        {
+            //the unit that can perform this action
+            Unit theUnit = MyUnits[action.Index];
+            Coordinates unitCo = new Coordinates(theUnit.X, theUnit.Y);
+            Coordinates moveCo = unitCo.GetCoordinateInDirection(action.MoveDirection);
+            int heightOfMoveSquare = TheGrid.GetHeightAt(moveCo.X, moveCo.Y);
+            if (heightOfMoveSquare == 3)
+            {
+                //we're done, move to that square
+                bestAction = action;
+                break;
+            }
+            else
+            {
+                Coordinates buildCo = moveCo.GetCoordinateInDirection(action.BuildDirection);
+                bool moveSquareIsMoveUp = heightOfMoveSquare == theUnit.Height + 1;
+                int heightOfBuildSquareAfterBuild = TheGrid.GetHeightAt(buildCo.X, buildCo.Y) + 1;
+
+                if (moveSquareIsMoveUp)
+                {
+                    if (maxMoveHeight < heightOfMoveSquare)
+                    {
+                        maxMoveHeight = heightOfMoveSquare;
+                        maxBuildHeight = heightOfBuildSquareAfterBuild;
+                        bestAction = action;
+                    }
+                }
+                else
+                {
+                    if (maxMoveHeight < heightOfMoveSquare)
+                    {
+                        maxMoveHeight = heightOfMoveSquare;
+                        maxBuildHeight = heightOfBuildSquareAfterBuild;
+                        bestAction = action;
+                    }
+                }
+            }
+        }
+
+        return bestAction;
     }
 
     public static void DebugWriteLine(string message = "")
@@ -185,6 +233,42 @@ class Player
         public override string ToString()
         {
             return $"{Type} {Index} {_dir1} {_dir2}";
+        }
+    }
+
+    public class Coordinates
+    {
+        public int X;
+        public int Y;
+        public Coordinates(int x, int y)
+        {
+            X = x;
+            Y = y;
+        }
+
+        public Coordinates GetCoordinateInDirection(Direction dir)
+        {
+            switch (dir)
+            {
+                case Direction.North:
+                    return new Coordinates(X, Y - 1);
+                case Direction.NorthEast:
+                    return new Coordinates(X + 1, Y - 1);
+                case Direction.East:
+                    return new Coordinates(X + 1, Y);
+                case Direction.SouthEast:
+                    return new Coordinates(X + 1, Y + 1);
+                case Direction.South:
+                    return new Coordinates(X, Y + 1);
+                case Direction.SouthWest:
+                    return new Coordinates(X - 1, Y + 1);
+                case Direction.West:
+                    return new Coordinates(X - 1, Y);
+                case Direction.NorthWest:
+                    return new Coordinates(X - 1, Y - 1);
+                default:
+                    throw new Exception($"Invalid direction {dir}");
+            }
         }
     }
 }
