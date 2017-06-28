@@ -91,10 +91,12 @@ class Player
     private static Action DecideActionToTake(List<Action> actions)
     {
         Action bestAction = null;
+        List<Action> moveActions = actions.Where(a => a.Type == MoveAndBuild).ToList();
+        List<Action> pushActions = actions.Where(a => a.Type == PushAndBuild).ToList();
         int maxMoveHeight = -1;
         int maxBuildHeight = -1;
 
-        foreach (Action action in actions)
+        foreach (Action action in moveActions)
         {
             Unit theUnit = MyUnits[action.Index];
             Coordinates unitCo = new Coordinates(theUnit.X, theUnit.Y);
@@ -102,67 +104,95 @@ class Player
             int heightOfMoveSquare = TheGrid.GetHeightAt(moveCo.X, moveCo.Y);
             Coordinates buildCo = moveCo.GetCoordinateInDirection(action.BuildDirection);
             int heightOfBuildSquareAfterBuild = TheGrid.GetHeightAt(buildCo.X, buildCo.Y) + 1;
-            if (action.Type == MoveAndBuild)
+            //the unit that can perform this action
+            if (heightOfMoveSquare == 3)
             {
-                //the unit that can perform this action
-                if (heightOfMoveSquare == 3)
+                //we're done, move to that square
+                if (theUnit.Height == 3 && heightOfBuildSquareAfterBuild == 4)
                 {
-                    //we're done, move to that square
-                    if (theUnit.Height == 3 && heightOfBuildSquareAfterBuild == 4)
-                    {
-                        //don't build on our own threes
-                        continue;
-                    }
-                    if (heightOfBuildSquareAfterBuild == 3
-                        && EnemyCanReachCoordinatesAtHeight(buildCo, heightOfBuildSquareAfterBuild))
-                    {
-                        //don't give enemy a point
-                        continue;
-                    }
-                    bestAction = action;
-                    break;
+                    //don't build on our own threes
+                    continue;
                 }
-                else
+                if (heightOfBuildSquareAfterBuild == 3
+                    && EnemyCanReachCoordinatesAtHeight(buildCo, heightOfBuildSquareAfterBuild))
                 {
-                    if (heightOfBuildSquareAfterBuild > heightOfMoveSquare + 1)
-                    {
-                        //why build something that we can't move to?
-                        continue;
-                    }
+                    //don't give enemy a point
+                    continue;
+                }
+                bestAction = action;
+                break;
+            }
+            else
+            {
+                if (heightOfBuildSquareAfterBuild > heightOfMoveSquare + 1)
+                {
+                    //why build something that we can't move to?
+                    continue;
+                }
 
-                    if (heightOfBuildSquareAfterBuild == 3 
-                        && EnemyCanReachCoordinatesAtHeight(buildCo, heightOfBuildSquareAfterBuild))
-                    {
-                        //don't give enemy a point
-                        continue;
-                    }
+                if (heightOfBuildSquareAfterBuild == 3
+                    && EnemyCanReachCoordinatesAtHeight(buildCo, heightOfBuildSquareAfterBuild))
+                {
+                    //don't give enemy a point
+                    continue;
+                }
 
-                    if (maxMoveHeight < heightOfMoveSquare)
+                if (maxMoveHeight < heightOfMoveSquare)
+                {
+                    maxMoveHeight = heightOfMoveSquare;
+                    maxBuildHeight = heightOfBuildSquareAfterBuild;
+                    bestAction = action;
+                }
+                else if (maxMoveHeight == heightOfMoveSquare)
+                {
+                    //same move height, check build height
+                    if (maxBuildHeight < heightOfBuildSquareAfterBuild)
                     {
                         maxMoveHeight = heightOfMoveSquare;
                         maxBuildHeight = heightOfBuildSquareAfterBuild;
                         bestAction = action;
                     }
-                    else if (maxMoveHeight == heightOfMoveSquare)
+                }
+            }
+        }
+
+        //certain cases just push as not enough to gain by moving
+        foreach (Action action in pushActions)
+        {
+            Unit theUnit = MyUnits[action.Index];
+            Coordinates unitCo = new Coordinates(theUnit.X, theUnit.Y);
+            Coordinates enemyCoords = unitCo.GetCoordinateInDirection(action.MoveDirection);
+            Unit enemyUnit = EnemyUnits.First(e => e.Coords.Equals(enemyCoords));
+            Coordinates enemyFinalLocation = enemyCoords.GetCoordinateInDirection(action.BuildDirection);
+            if (theUnit.Height == 0 || theUnit.Height == 1)
+            {
+                //we're low down
+                if (enemyUnit.Height >= 2 && TheGrid.GetHeightAt(enemyFinalLocation) < 2)
+                {
+                    //knock them off
+                    if (TheGrid.GetHeightAt(enemyFinalLocation) == 0)
                     {
-                        //same move height, check build height
-                        if (maxBuildHeight < heightOfBuildSquareAfterBuild)
-                        {
-                            maxMoveHeight = heightOfMoveSquare;
-                            maxBuildHeight = heightOfBuildSquareAfterBuild;
-                            bestAction = action;
-                        }
+                        //knock them straight to ground
+                        bestAction = action;
+                        break;
+                    }
+                    else
+                    {
+                        Action betterAction = GetBetterPushActionIfPossible(actions, enemyFinalLocation);
+                        bestAction = betterAction ?? action;
+                        break;
                     }
                 }
             }
-            else if (action.Type == PushAndBuild)
+            else
             {
-                Coordinates enemyCoords = unitCo.GetCoordinateInDirection(action.MoveDirection);
-                Unit enemyUnit = EnemyUnits.First(e => e.Coords.Equals(enemyCoords));
-                Coordinates enemyFinalLocation = enemyCoords.GetCoordinateInDirection(action.BuildDirection);
-                if (theUnit.Height == 0 || theUnit.Height == 1)
+                //how good is the best action move?
+                Coordinates bestMoveCo = unitCo.GetCoordinateInDirection(bestAction.MoveDirection);
+                int heightOfMoveSquare = TheGrid.GetHeightAt(bestMoveCo.X, bestMoveCo.Y);
+                DebugWriteLine($"Height of move square is  {heightOfMoveSquare}");
+                if (heightOfMoveSquare == 0)
                 {
-                    //we're low down
+                    //we're high, but have to go all the way down... see if we can hurt them at least a bit
                     if (enemyUnit.Height >= 2 && TheGrid.GetHeightAt(enemyFinalLocation) < 2)
                     {
                         //knock them off
@@ -174,21 +204,7 @@ class Player
                         }
                         else
                         {
-                            Action betterAction = null;
-                            //make sure none lower
-                            foreach (Action act in actions.Where(a => a.Type == PushAndBuild))
-                            {
-                                Unit friendly = MyUnits.First(u => u.Index == act.Index);
-                                Coordinates enCoords = friendly.Coords.GetCoordinateInDirection(act.MoveDirection);
-                                DebugWriteLine($"moveDirection {act.MoveDirection} enCoords are ({enCoords.X}, {enCoords.Y})");
-                                Unit enUnit = EnemyUnits.First(e => e.Coords.Equals(enCoords));
-                                Coordinates enFinalLocation = enCoords.GetCoordinateInDirection(act.BuildDirection);
-                                if (TheGrid.GetHeightAt(enemyFinalLocation) == 0)
-                                {
-                                    //there is another push which does better 
-                                    betterAction = act;
-                                }
-                            }
+                            Action betterAction = GetBetterPushActionIfPossible(actions, enemyFinalLocation);
                             bestAction = betterAction ?? action;
                             break;
                         }
@@ -198,6 +214,27 @@ class Player
         }
 
         return bestAction;
+    }
+
+    private static Action GetBetterPushActionIfPossible(List<Action> actions, Coordinates enemyFinalLocation)
+    {
+        Action betterAction = null;
+        //make sure none lower
+        foreach (Action act in actions.Where(a => a.Type == PushAndBuild))
+        {
+            Unit friendly = MyUnits.First(u => u.Index == act.Index);
+            Coordinates enCoords = friendly.Coords.GetCoordinateInDirection(act.MoveDirection);
+            DebugWriteLine($"moveDirection {act.MoveDirection} enCoords are ({enCoords.X}, {enCoords.Y})");
+            Unit enUnit = EnemyUnits.First(e => e.Coords.Equals(enCoords));
+            Coordinates enFinalLocation = enCoords.GetCoordinateInDirection(act.BuildDirection);
+            if (TheGrid.GetHeightAt(enemyFinalLocation) == 0)
+            {
+                //there is another push which does better 
+                betterAction = act;
+            }
+        }
+
+        return betterAction;
     }
 
     private static bool EnemyCanReachCoordinatesAtHeight(Coordinates buildCo, int heightOfBuildSquareAfterBuild)
@@ -348,7 +385,6 @@ class Player
             {
                 Coordinates co = obj as Coordinates;
                 bool equal = co.X == X && co.Y == Y;
-                DebugWriteLine($"Coordinate Equals returns {equal}");
                 return equal;
             }
             return base.Equals(obj);
