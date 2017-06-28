@@ -93,18 +93,21 @@ class Player
             Coordinates unitCo = new Coordinates(theUnit.X, theUnit.Y);
             Coordinates moveCo = unitCo.GetCoordinateInDirection(action.MoveDirection);
             int heightOfMoveSquare = TheGrid.GetHeightAt(moveCo.X, moveCo.Y);
+            Coordinates buildCo = moveCo.GetCoordinateInDirection(action.BuildDirection);
+            int heightOfBuildSquareAfterBuild = TheGrid.GetHeightAt(buildCo.X, buildCo.Y) + 1;
             if (heightOfMoveSquare == 3)
             {
                 //we're done, move to that square
+                if (theUnit.Height == 3 && heightOfBuildSquareAfterBuild == 4)
+                {
+                    //don't build on our own threes
+                    continue;
+                }
                 bestAction = action;
                 break;
             }
             else
             {
-                Coordinates buildCo = moveCo.GetCoordinateInDirection(action.BuildDirection);
-                bool moveSquareIsMoveUp = heightOfMoveSquare == theUnit.Height + 1;
-                int heightOfBuildSquareAfterBuild = TheGrid.GetHeightAt(buildCo.X, buildCo.Y) + 1;
-
                 if (maxMoveHeight < heightOfMoveSquare)
                 {
                     maxMoveHeight = heightOfMoveSquare;
