@@ -1,8 +1,5 @@
 ﻿using System;
 using System.Linq;
-using System.IO;
-using System.Text;
-using System.Collections;
 using System.Collections.Generic;
 
 /**
@@ -52,7 +49,6 @@ class Player
                 int unitX = int.Parse(inputs[0]);
                 int unitY = int.Parse(inputs[1]);
                 MyUnits.Add(new Unit(TheGrid, unitX, unitY, i));
-                Console.Error.WriteLine($"coords are ({unitX}, {unitY})\n");
             }
 
             EnemyUnits = new List<Unit>();
@@ -65,7 +61,6 @@ class Player
                 {
                     EnemyUnits.Add(new Unit(TheGrid, otherX, otherY, i));
                 }
-                Console.Error.WriteLine($"coords are ({otherX}, {otherY})\n");
             }
 
             List<Action> actions = new List<Action>();
@@ -268,6 +263,8 @@ class Player
         North, NorthEast, East, SouthEast, South, SouthWest, West, NorthWest
     }
 
+    #region Game entities
+
     public class Grid
     {
         private const char Hole = '.';
@@ -424,4 +421,6 @@ class Player
             return false;
         }
     }
+
+    #endregion
 }
