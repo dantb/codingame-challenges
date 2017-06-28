@@ -12,6 +12,7 @@ using System.Collections.Generic;
 class Player
 {
     private static Grid TheGrid;
+    private static List<Unit> MyUnits;
 
     static void Main(string[] args)
     {
@@ -27,25 +28,27 @@ class Player
             {
                 string row = Console.ReadLine();
                 rows.Add(row);
-                Console.Error.WriteLine($"row is {row}\n");
             }
-
             TheGrid = new Grid(rows);
 
+            MyUnits = new List<Unit>();
             for (int i = 0; i < unitsPerPlayer; i++)
             {
                 inputs = Console.ReadLine().Split(' ');
                 int unitX = int.Parse(inputs[0]);
                 int unitY = int.Parse(inputs[1]);
+                MyUnits.Add(new Unit(TheGrid, unitX, unitY));
                 Console.Error.WriteLine($"coords are ({unitX}, {unitY})\n");
-
             }
+
             for (int i = 0; i < unitsPerPlayer; i++)
             {
                 inputs = Console.ReadLine().Split(' ');
                 int otherX = int.Parse(inputs[0]);
                 int otherY = int.Parse(inputs[1]);
+                Console.Error.WriteLine($"coords are ({otherX}, {otherY})\n");
             }
+
             int legalActions = int.Parse(Console.ReadLine());
             for (int i = 0; i < legalActions; i++)
             {
@@ -63,9 +66,14 @@ class Player
         }
     }
 
-    public static void DebugWrite(string message)
+    public static void DebugWriteLine(string message = "")
     {
         Console.Error.WriteLine(message);
+    }
+
+    public static void DebugWrite(string message)
+    {
+        Console.Error.Write(message);
     }
 
     public class Grid
@@ -84,8 +92,6 @@ class Player
         {
             _grid = new int[rows.Count, rows.Count];
             _size = rows.Count;
-            //reverse to start at (0,0) as a coordinate
-            rows.Reverse();
             for (int i = 0; i < rows.Count; i++)
             {
                 string row = rows[i];
@@ -103,26 +109,38 @@ class Player
                 }
             }
 
-            DebugWrite("The grid is: \n");
-            for (int i = _size - 1; i <= 0; i--)
+            DebugWriteLine("The grid is: ");
+            for (int i = 0; i < _size; i++)
             {
                 for (int j = 0; j < _size; j++)
                 {
                     DebugWrite($" {_grid[i, j]}");
                 }
-                DebugWrite("\n");
+                DebugWriteLine();
             }
+        }
+
+        public int GetHeightAt(int x, int y)
+        {
+            return _grid[y, x];
         }
     }
 
     public class Unit
     {
+        private Grid _grid;
+
         public int X;
         public int Y;
+        public int Height { get { return _grid.GetHeightAt(X, Y); } }
+
         public Unit(Grid grid, int x, int y)
         {
             X = x;
             Y = y;
+            _grid = grid;
         }
     }
+
+    //public class Action
 }
