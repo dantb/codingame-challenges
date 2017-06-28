@@ -13,6 +13,17 @@ class Player
 {
     private static Grid TheGrid;
     private static List<Unit> MyUnits;
+    private static Dictionary<string, Direction> Directions = new Dictionary<string, Direction>()
+    {
+        { "N", Direction.North },
+        { "NE", Direction.NorthEast },
+        { "E", Direction.East },
+        { "SE", Direction.SouthEast },
+        { "S", Direction.South },
+        { "SW", Direction.SouthWest },
+        { "W", Direction.West },
+        { "NW", Direction.NorthWest }
+    };
 
     static void Main(string[] args)
     {
@@ -49,6 +60,7 @@ class Player
                 Console.Error.WriteLine($"coords are ({otherX}, {otherY})\n");
             }
 
+            List<Action> actions = new List<Action>();
             int legalActions = int.Parse(Console.ReadLine());
             for (int i = 0; i < legalActions; i++)
             {
@@ -57,6 +69,9 @@ class Player
                 int index = int.Parse(inputs[1]);
                 string dir1 = inputs[2];
                 string dir2 = inputs[3];
+                Action action = new Action(atype, index, dir1, dir2);
+                actions.Add(action);
+                DebugWriteLine($"Action is:  {action}");
             }
 
             // Write an action using Console.WriteLine()
@@ -74,6 +89,11 @@ class Player
     public static void DebugWrite(string message)
     {
         Console.Error.Write(message);
+    }
+
+    public enum Direction
+    {
+        North, NorthEast, East, SouthEast, South, SouthWest, West, NorthWest
     }
 
     public class Grid
@@ -142,5 +162,29 @@ class Player
         }
     }
 
-    //public class Action
+    public class Action
+    {
+        private string _dir1;
+        private string _dir2;
+
+        public string Type;
+        public int Index;
+        public Direction MoveDirection;
+        public Direction BuildDirection;
+
+        public Action(string type, int index, string dir1, string dir2)
+        {
+            Type = type;
+            Index = index;
+            MoveDirection = Directions[dir1];
+            BuildDirection = Directions[dir2];
+            _dir1 = dir1;
+            _dir2 = dir2;
+        }
+
+        public override string ToString()
+        {
+            return $"{Type} {Index} {_dir1} {_dir2}";
+        }
+    }
 }
