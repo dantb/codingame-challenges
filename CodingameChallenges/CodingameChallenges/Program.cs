@@ -51,7 +51,7 @@ class Player
                 inputs = Console.ReadLine().Split(' ');
                 int unitX = int.Parse(inputs[0]);
                 int unitY = int.Parse(inputs[1]);
-                MyUnits.Add(new Unit(TheGrid, unitX, unitY));
+                MyUnits.Add(new Unit(TheGrid, unitX, unitY, i));
                 Console.Error.WriteLine($"coords are ({unitX}, {unitY})\n");
             }
 
@@ -63,7 +63,7 @@ class Player
                 int otherY = int.Parse(inputs[1]);
                 if (otherX != -1)
                 {
-                    EnemyUnits.Add(new Unit(TheGrid, otherX, otherY));
+                    EnemyUnits.Add(new Unit(TheGrid, otherX, otherY, i));
                 }
                 Console.Error.WriteLine($"coords are ({otherX}, {otherY})\n");
             }
@@ -166,15 +166,32 @@ class Player
                     if (enemyUnit.Height >= 2 && TheGrid.GetHeightAt(enemyFinalLocation) < 2)
                     {
                         //knock them off
-                        //make sure none lower
-                        //foreach (var item in actions.Where(a => a.Type == PushAndBuild))
-                        //{
-
-                        //}
-
-
-                        bestAction = action;
-                        break;
+                        if (TheGrid.GetHeightAt(enemyFinalLocation) == 0)
+                        {
+                            //knock them straight to ground
+                            bestAction = action;
+                            break;
+                        }
+                        else
+                        {
+                            Action betterAction = null;
+                            //make sure none lower
+                            foreach (Action act in actions.Where(a => a.Type == PushAndBuild))
+                            {
+                                Unit friendly = MyUnits.First(u => u.Index == act.Index);
+                                Coordinates enCoords = friendly.Coords.GetCoordinateInDirection(act.MoveDirection);
+                                DebugWriteLine($"moveDirection {act.MoveDirection} enCoords are ({enCoords.X}, {enCoords.Y})");
+                                Unit enUnit = EnemyUnits.First(e => e.Coords.Equals(enCoords));
+                                Coordinates enFinalLocation = enCoords.GetCoordinateInDirection(act.BuildDirection);
+                                if (TheGrid.GetHeightAt(enemyFinalLocation) == 0)
+                                {
+                                    //there is another push which does better 
+                                    betterAction = act;
+                                }
+                            }
+                            bestAction = betterAction ?? action;
+                            break;
+                        }
                     }
                 }
             }
@@ -276,14 +293,16 @@ class Player
         public Coordinates Coords;
         public int X;
         public int Y;
+        public int Index;
         public int Height { get { return _grid.GetHeightAt(X, Y); } }
 
-        public Unit(Grid grid, int x, int y)
+        public Unit(Grid grid, int x, int y, int index)
         {
             X = x;
             Y = y;
             Coords = new Coordinates(x, y);
             _grid = grid;
+            Index = index;
         }
     }
 
@@ -328,7 +347,9 @@ class Player
             if (obj is Coordinates)
             {
                 Coordinates co = obj as Coordinates;
-                return co.X == X && co.Y == Y;
+                bool equal = co.X == X && co.Y == Y;
+                DebugWriteLine($"Coordinate Equals returns {equal}");
+                return equal;
             }
             return base.Equals(obj);
         }
