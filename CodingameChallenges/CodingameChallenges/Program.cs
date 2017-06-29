@@ -186,10 +186,18 @@ class Player
             else
             {
                 //how good is the best action move?
-                Coordinates bestMoveCo = unitCo.GetCoordinateInDirection(bestAction.MoveDirection);
+                if (bestAction == null)
+                {
+                    DebugWriteLine("Best action is null");
+                    continue;
+                }
+                Unit ourBestUnit = MyUnits[bestAction.Index];
+                Coordinates bestUnitCo = new Coordinates(ourBestUnit.X, ourBestUnit.Y);
+                Coordinates bestMoveCo = bestUnitCo.GetCoordinateInDirection(bestAction.MoveDirection);
+                DebugWriteLine($"About to get height with ({bestMoveCo.X}, {bestMoveCo.Y})");
                 int heightOfMoveSquare = TheGrid.GetHeightAt(bestMoveCo.X, bestMoveCo.Y);
                 DebugWriteLine($"Height of move square is  {heightOfMoveSquare}");
-                if (heightOfMoveSquare == 0)
+                if (heightOfMoveSquare == 0 || heightOfMoveSquare == 1)
                 {
                     //we're high, but have to go all the way down... see if we can hurt them at least a bit
                     if (enemyUnit.Height >= 2 && TheGrid.GetHeightAt(enemyFinalLocation) < 2)
@@ -236,15 +244,21 @@ class Player
         if (ignoredBuildToFour)
         {
             DebugWriteLine("Inside ignored build to four");
-            if (bestAction.Type == MoveAndBuild)
+            if (bestAction == null)
             {
+                bestAction = ignoredAction;
+            }
+            else if (bestAction.Type == MoveAndBuild)
+            {
+                DebugWriteLine("Action type check");
+
                 Unit theUnit = MyUnits[bestAction.Index];
                 Coordinates unitCo = new Coordinates(theUnit.X, theUnit.Y);
                 Coordinates moveCo = unitCo.GetCoordinateInDirection(bestAction.MoveDirection);
                 int heightOfMoveSquare = TheGrid.GetHeightAt(moveCo.X, moveCo.Y);
                 Coordinates buildCo = moveCo.GetCoordinateInDirection(bestAction.BuildDirection);
                 int heightOfBuildSquareAfterBuild = TheGrid.GetHeightAt(buildCo.X, buildCo.Y) + 1;
-                if (heightOfMoveSquare < 2 && heightOfBuildSquareAfterBuild < 2)
+                if (heightOfMoveSquare < 2 && heightOfBuildSquareAfterBuild <= 2)
                 {
                     //note we know height will be four so don't worry about giving enemy a point case
                     //moving down and not building particularly tall, worth taking ignored action
@@ -286,6 +300,7 @@ class Player
                 if (heightOfBuildSquareAfterBuild <= enemy.Height + 1)
                 {
                     //they can get there
+                    DebugWriteLine($"enemy at {enemy.X} {enemy.Y} can reach coordinates {buildCo.X} {buildCo.Y}");
                     return true;
                 }
             }
