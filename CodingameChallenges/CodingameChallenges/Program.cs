@@ -93,6 +93,9 @@ class Player
         bool ignoredBuildToFour = false;
         Action ignoredAction = null;
 
+        bool ignoreBuildTooBig = false;
+        HashSet<Action> ignoredBuildTooBigActions = new HashSet<Action>();
+
         foreach (Action action in moveActions)
         {
             Unit theUnit = MyUnits[action.Index];
@@ -105,8 +108,9 @@ class Player
             if (heightOfMoveSquare == 3)
             {
                 //we're done, move to that square
-                if (theUnit.Height == 3 && heightOfBuildSquareAfterBuild == 4)
+                if ((theUnit.Height == 3 || theUnit.Height == 2) && heightOfBuildSquareAfterBuild == 4)
                 {
+                    DebugWriteLine("Setting ignore build to 4 true");
                     ignoredBuildToFour = true;
                     ignoredAction = action;
                     //don't build on our own threes
@@ -118,6 +122,9 @@ class Player
                     //don't give enemy a point
                     continue;
                 }
+                //if we get here then we're getting on a 3 without having to build to 4 - don't overwrite this
+                //with a worse "3 and build to 4" move
+                ignoredBuildToFour = false;
                 bestAction = action;
                 break;
             }
@@ -125,6 +132,8 @@ class Player
             {
                 if (heightOfBuildSquareAfterBuild > heightOfMoveSquare + 1)
                 {
+                    ignoreBuildTooBig = true;
+                    ignoredBuildTooBigActions.Add(action);
                     //why build something that we can't move to?
                     continue;
                 }
@@ -246,6 +255,7 @@ class Player
             DebugWriteLine("Inside ignored build to four");
             if (bestAction == null)
             {
+                DebugWriteLine("USING IGNORED ACTION");
                 bestAction = ignoredAction;
             }
             else if (bestAction.Type == MoveAndBuild)
@@ -263,7 +273,24 @@ class Player
                     //note we know height will be four so don't worry about giving enemy a point case
                     //moving down and not building particularly tall, worth taking ignored action
                     bestAction = ignoredAction;
+                    DebugWriteLine("USING IGNORED ACTION");
                 }
+            }
+        }
+
+        if (bestAction == null)
+        {
+            if (ignoreBuildTooBig)
+            {
+                //nothing chosen, really struggling for options - try to build on a 4
+                //for now just take first one
+                bestAction = ignoredBuildTooBigActions.First();
+                DebugWriteLine("Using ignored action for building too big");
+                //foreach (Action action in ignoredBuildTooBigActions)
+                //{
+                //    bestAction = action;
+                //    break;
+                //}
             }
         }
 
