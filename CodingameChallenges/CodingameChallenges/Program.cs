@@ -91,7 +91,8 @@ class Player
         int maxMoveHeight = -1;
         int maxBuildHeight = -1;
         bool ignoredBuildToFour = false;
-        Action ignoredAction = null;
+        Action ignoredAction = null; //TODO - make this a set an then optimise!! For example you might choose one that traps you
+        //when you could actually escape to a whole load of 3s 
 
         bool ignoreBuildTooBig = false;
         HashSet<Action> ignoredBuildTooBigActions = new HashSet<Action>();
